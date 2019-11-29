@@ -98,6 +98,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     captions: (optional) A list of strings to use as captions for each object
     """
     # Number of instances
+    print('CHECK ::', boxes.shape)
     N = boxes.shape[0]
     if not N:
         print("\n*** No instances to display *** \n")
@@ -143,8 +144,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             caption = "{} {:.3f}".format(label, score) if score else label
         else:
             caption = captions[i]
-        ax.text(x1, y1 + 8, caption,
-                color='w', size=11, backgroundcolor="none")
+        ax.text(x1, y1 + 8, caption, color='w', size=11, backgroundcolor="none")
 
         # Mask
         mask = masks[:, :, i]
@@ -157,11 +157,13 @@ def display_instances(image, boxes, masks, class_ids, class_names,
             (mask.shape[0] + 2, mask.shape[1] + 2), dtype=np.uint8)
         padded_mask[1:-1, 1:-1] = mask
         contours = find_contours(padded_mask, 0.5)
+
         for verts in contours:
             # Subtract the padding and flip (y, x) to (x, y)
             verts = np.fliplr(verts) - 1
             p = Polygon(verts, facecolor="none", edgecolor=color)
             ax.add_patch(p)
+
     ax.imshow(masked_image.astype(np.uint8))
     if auto_show:
         plt.show()
@@ -302,7 +304,7 @@ def display_top_masks(image, mask, class_ids, class_names, limit=4):
     display_images(to_display, titles=titles, cols=limit + 1, cmap="Blues_r")
 
 
-def plot_precision_recall(AP, precisions, recalls):
+def plot_precision_recall(AP, precisions, recalls, ax=None):
     """Draw the precision-recall curve.
 
     AP: Average precision at IoU >= 0.5
@@ -310,15 +312,20 @@ def plot_precision_recall(AP, precisions, recalls):
     recalls: list of recall values
     """
     # Plot the Precision-Recall curve
-    _, ax = plt.subplots(1)
+    if not ax:
+        _, ax = plt.subplots(1)
+
     ax.set_title("Precision-Recall Curve. AP@50 = {:.3f}".format(AP))
     ax.set_ylim(0, 1.1)
     ax.set_xlim(0, 1.1)
+    ax.set_ylabel('precision')
+    ax.set_xlabel('recall')
+    ax.grid(alpha=.4,linestyle='--')
     _ = ax.plot(recalls, precisions)
 
 
 def plot_overlaps(gt_class_ids, pred_class_ids, pred_scores,
-                  overlaps, class_names, threshold=0.5):
+                  overlaps, class_names, threshold=0.5, is_subplot=False):
     """Draw a grid showing how ground truth objects are classified.
     gt_class_ids: [N] int. Ground truth class IDs
     pred_class_id: [N] int. Predicted class IDs
@@ -330,7 +337,10 @@ def plot_overlaps(gt_class_ids, pred_class_ids, pred_scores,
     gt_class_ids = gt_class_ids[gt_class_ids != 0]
     pred_class_ids = pred_class_ids[pred_class_ids != 0]
 
-    plt.figure(figsize=(12, 10))
+    if not is_subplot:
+        fig = plt.figure(figsize=(5, 5))
+        fig.canvas.set_window_title("plot_overlaps")
+
     plt.imshow(overlaps, interpolation='nearest', cmap=plt.cm.Blues)
     plt.yticks(np.arange(len(pred_class_ids)),
                ["{} ({:.2f})".format(class_names[int(id)], pred_scores[i])
@@ -354,6 +364,7 @@ def plot_overlaps(gt_class_ids, pred_class_ids, pred_scores,
     plt.tight_layout()
     plt.xlabel("Ground Truth")
     plt.ylabel("Predictions")
+    plt.title("Overlap Plot")
 
 
 def draw_boxes(image, boxes=None, refined_boxes=None,
